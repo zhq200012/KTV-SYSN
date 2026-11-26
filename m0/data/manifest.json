@@ -1,0 +1,54 @@
+{
+  "songs": [
+    {
+      "song_id": "S001",
+      "title": "合成歌曲一",
+      "language": "zh",
+      "license": "self-made",
+      "source": "synth",
+      "audio_path": "songs/S001/reference.wav",
+      "duration_sec": 40.0,
+      "timeline_path": "songs/S001/timeline.json"
+    },
+    {
+      "song_id": "S002",
+      "title": "合成歌曲二",
+      "language": "zh",
+      "license": "self-made",
+      "source": "synth",
+      "audio_path": "songs/S002/reference.wav",
+      "duration_sec": 40.0,
+      "timeline_path": "songs/S002/timeline.json"
+    },
+    {
+      "song_id": "S003",
+      "title": "合成歌曲三",
+      "language": "zh",
+      "license": "self-made",
+      "source": "synth",
+      "audio_path": "songs/S003/reference.wav",
+      "duration_sec": 40.0,
+      "timeline_path": "songs/S003/timeline.json"
+    },
+    {
+      "song_id": "S004",
+      "title": "合成歌曲四",
+      "language": "zh",
+      "license": "self-made",
+      "source": "synth",
+      "audio_path": "songs/S004/reference.wav",
+      "duration_sec": 40.0,
+      "timeline_path": "songs/S004/timeline.json"
+    },
+    {
+      "song_id": "S005",
+      "title": "合成歌曲五",
+      "language": "zh",
+      "license": "self-made",
+      "source": "synth",
+      "audio_path": "songs/S005/reference.wav",
+      "duration_sec": 40.0,
+      "timeline_path": "songs/S005/timeline.json"
+    }
+  ]
+}

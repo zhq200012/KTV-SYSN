@@ -1,0 +1,14 @@
+# 数据资产不入库（DATASET_SPEC.md §1/§4）
+data/songs/**/*.wav
+data/songs/**/*.mp3
+data/songs/**/*.lrc
+data/songs/**/timeline.json
+data/eval/real/
+data/eval/synth/
+data/eval/labels/*.json
+data/library.db
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/

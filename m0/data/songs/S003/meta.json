@@ -1,0 +1,10 @@
+{
+  "song_id": "S003",
+  "title": "合成歌曲三",
+  "language": "zh",
+  "license": "self-made",
+  "source": "synth",
+  "audio_path": "songs/S003/reference.wav",
+  "duration_sec": 40.0,
+  "timeline_path": "songs/S003/timeline.json"
+}

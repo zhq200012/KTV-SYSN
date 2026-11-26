@@ -1,0 +1,10 @@
+{
+  "song_id": "S002",
+  "title": "合成歌曲二",
+  "language": "zh",
+  "license": "self-made",
+  "source": "synth",
+  "audio_path": "songs/S002/reference.wav",
+  "duration_sec": 40.0,
+  "timeline_path": "songs/S002/timeline.json"
+}

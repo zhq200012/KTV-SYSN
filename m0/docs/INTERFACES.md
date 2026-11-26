@@ -53,8 +53,8 @@ PEAK_NEIGHBORHOOD = 20        # 频域局部极大窗口（±bin）
 PEAK_AMP_MIN      = 10.0      # 幅度下限（相对谱，见实现）
 FAN_VALUE         = 15        # 每个峰值向后配对的峰值数
 TARGET_ZONE       = (1, 15)   # 时间差 Δt 帧数范围 [min,max]（含）
-FREQ_BUCKET       = 16.0      # 频率量化桶宽（Hz）
-# 哈希 = (f1_bucket, f2_bucket, dt_frames)，量化后编码为 int
+# 频率量化到 FFT bin 索引（bin 宽 = sample_rate/fft_size ≈ 3.9Hz，与 dejavu 一致）
+# 哈希 = (f1_bin, f2_bin, dt_frames)，编码为 int（12/12/8 bit）
 
 def extract_peaks(samples: np.ndarray) -> list[tuple[float, float]]
     # -> [(t_sec, f_hz), ...]，按帧内局部极大 + 幅度阈值筛选
@@ -177,7 +177,7 @@ class SyncEngine:
 
 **校正与 rate**（DESIGN 3.3）：
 
-- 正常推进靠单调时钟外推；每 2~5s（`REALIGN_INTERVAL` 默认 3.0s）或每次 `push` 用匹配结果重对齐。
+- 正常推进靠单调时钟外推；每 2~5s（`REALIGN_INTERVAL` 默认 2.0s）或每次 `push` 用匹配结果重对齐。
 - rate 估计：两次锚点间隔 ≥ `RATE_MIN_SPAN`（10s），`rate = Δref / Δcapture`，过滤 `RATE_MIN=0.85` ~ `RATE_MAX=1.15` 之外，10% 指数平滑（`RATE_EMA=0.10`）。
 - 三级校正：`|偏差| < 0.10s` 不调整；`0.10~1.0s` 渐进（约 1.5s 内追平）；`>1.0s` 或连续多次同向大偏差 → 直接跳转。跳转仅用于合法场景（切歌/重唱），正常校正不得累积到 >1s（UI_SPEC 3.2 红线）。
 
@@ -256,13 +256,13 @@ def render_report(report: EvalReport) -> str    # Markdown
 | `FFT_SIZE` / `HOP` | 4096 / 512 | 指纹 FFT |
 | `PEAK_AMP_MIN` | 10.0 | 峰值幅度下限 |
 | `FAN_VALUE` / `TARGET_ZONE` | 15 / (1,15) | landmark 配对 |
-| `FREQ_BUCKET` | 16.0 | 频率量化 |
+| 频率量化 | FFT bin（≈3.9Hz） | 频率哈希（dejavu 一致，RISKS R4） |
 | `OFFSET_BIN` | 1 帧(32ms) | offset 直方图 bin（≤50ms，RISKS R2） |
 | `CONFIDENCE_THRESHOLD` | 0.10 | 识别置信阈值 |
 | `MIN_ALIGN` | 5 | 最少对齐指纹数 |
 | `UNIQUENESS_MARGIN` | 1.5 | 得票唯一性边际 |
 | `MATCH_WINDOW` | 2.0s | 匹配滚动窗口 |
-| `REALIGN_INTERVAL` | 3.0s | 重对齐周期 |
+| `REALIGN_INTERVAL` | 2.0s | 重对齐周期 |
 | `RATE_MIN_SPAN` / `RATE_MIN` / `RATE_MAX` / `RATE_EMA` | 10s / 0.85 / 1.15 / 0.10 | rate 估计 |
 | `CORRECT_SMALL` / `CORRECT_LARGE` | 0.10s / 1.0s | 三级校正阈值 |
 

@@ -1,0 +1,10 @@
+{
+  "song_id": "OUT1",
+  "title": "合成曲库外",
+  "language": "zh",
+  "license": "self-made",
+  "source": "synth",
+  "audio_path": "songs/OUT1/reference.wav",
+  "duration_sec": 40.0,
+  "timeline_path": "songs/OUT1/timeline.json"
+}
