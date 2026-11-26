@@ -19,7 +19,7 @@
 
 ## 2. 环境与复现
 
-- 代码版本：commit `3e3162b`
+- 代码版本：commit `0ac3689`
 - 复现命令：`cd m0 && python -m singalong synth --seed 20261126 && python -m singalong dataset-build && python -m singalong eval`
 - 随机种子：20261126（合成样本生成与评测固定）
 - 关键参数：FFT 4096/hop 512，频率量化 FFT bin（3.9Hz），offset_bin 32ms，置信阈值 0.1，min_align 5
