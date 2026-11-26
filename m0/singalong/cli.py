@@ -324,6 +324,21 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _fix_stdout_encoding() -> None:
+    """Windows 控制台默认 GBK，打印含非 ASCII 的报告会抛 UnicodeEncodeError 并退出码 1。
+
+    强制 stdout/stderr 为 UTF-8（errors=replace 兜底），保证 `python -m singalong eval` / `demo`
+    在 GBK 控制台下也能正常退出（报告文件本身始终以 UTF-8 写入）。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _fix_stdout_encoding()
     args = build_parser().parse_args(argv)
     return args.func(args)

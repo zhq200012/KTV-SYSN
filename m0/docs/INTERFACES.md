@@ -178,8 +178,9 @@ class SyncEngine:
 **校正与 rate**（DESIGN 3.3）：
 
 - 正常推进靠单调时钟外推；每 2~5s（`REALIGN_INTERVAL` 默认 2.0s）或每次 `push` 用匹配结果重对齐。
-- rate 估计：两次锚点间隔 ≥ `RATE_MIN_SPAN`（10s），`rate = Δref / Δcapture`，过滤 `RATE_MIN=0.85` ~ `RATE_MAX=1.15` 之外，10% 指数平滑（`RATE_EMA=0.10`）。
-- 三级校正：`|偏差| < 0.10s` 不调整；`0.10~1.0s` 渐进（约 1.5s 内追平）；`>1.0s` 或连续多次同向大偏差 → 直接跳转。跳转仅用于合法场景（切歌/重唱），正常校正不得累积到 >1s（UI_SPEC 3.2 红线）。
+- rate 估计：**rate 测量锚点与位置锚点分离**——`_rate_ref/_rate_cap` 只在「累计间隔 ≥ `RATE_MIN_SPAN`（10s）」时计算 `rate = Δref / Δcapture` 并重置，过滤 `RATE_MIN=0.85` ~ `RATE_MAX=1.15` 之外，10% 指数平滑（`RATE_EMA=0.10`）；切歌/重唱/恢复时重置。不随每次重对齐重置，避免 span 恒等于重对齐周期导致 rate 恒为 1.0。
+- 三级校正：`|偏差| < 0.10s` 不调整；`0.10~1.0s` 渐进（约 1.5s 内追平）；`>1.0s` 直接跳转。跳转仅用于合法场景（切歌/重唱），正常校正不得累积到 >1s（UI_SPEC 3.2 红线）。
+- **未实现（M0 接受，已在契约注明）**：DESIGN 3.3「连续多次同向大偏差 → 跳转」未落地——`_on_match` 目前只按单次 `|deviation|` 判级，未累计同向大偏差。
 
 ### 2.6 索引存储与数据管线
 
@@ -265,6 +266,9 @@ def render_report(report: EvalReport) -> str    # Markdown
 | `REALIGN_INTERVAL` | 2.0s | 重对齐周期 |
 | `RATE_MIN_SPAN` / `RATE_MIN` / `RATE_MAX` / `RATE_EMA` | 10s / 0.85 / 1.15 / 0.10 | rate 估计 |
 | `CORRECT_SMALL` / `CORRECT_LARGE` | 0.10s / 1.0s | 三级校正阈值 |
+| `LOW_ENERGY_RMS` | 0.005 | 低能量 RMS 阈值 |
+| `PAUSE_MIN_ENERGY_SEC` | 1.0s | 连续低能量触发暂停时长 |
+| `LOST_FAIL_STREAK` | 3 | 连续匹配失败触发失锁次数 |
 
 ## 6. 不改变需求的原则
 

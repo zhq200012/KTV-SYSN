@@ -306,6 +306,19 @@ def generate_all(data_dir: str, seed: int = 20261126) -> list[dict]:
             "events": [{"t": 8.0, "type": "replay"}],
             "freq_scale": 1.0, "time_scale": 1.0, "notes": "重唱(回开头)",
         })
+        # 失锁：播 6s -> 高能量无法匹配噪声 8s -> 再播 6s（LOST -> 恢复原曲）
+        seg_a = build_sample(sd, duration, 10.0, 6.0, band_index=band_by_id[sid], snr_db=25.0)
+        noise_rng = np.random.default_rng(sd ^ 0xC0FFEE)
+        noise = noise_rng.normal(0.0, 0.2, int(8.0 * sr)).astype(np.float32)
+        seg_b = build_sample(sd, duration, 16.0, 6.0, band_index=band_by_id[sid], snr_db=25.0)
+        wav = np.concatenate([seg_a, noise, seg_b])
+        add(f"synth_{sid}_lost", wav, {
+            "sample_id": f"synth_{sid}_lost", "kind": "synth",
+            "audio_path": f"eval/synth/synth_{sid}_lost.wav",
+            "song_id": sid, "start_offset_sec": 10.0, "duration_sec": 20.0,
+            "events": [{"t": 6.0, "type": "lost", "dur_sec": 8.0}],
+            "freq_scale": 1.0, "time_scale": 1.0, "notes": "失锁：高能量噪声 8s 后恢复",
+        })
 
     # 切歌：S001 播 8s -> S002 从开头播 6s
     seg_a = build_sample(seed + 1, duration, 10.0, 8.0, band_index=band_by_id["S001"], snr_db=25.0)

@@ -39,10 +39,10 @@ def ground_truth(label: dict):
             pos = pos + (et - cur)
             cur = et
             typ = ev["type"]
-            if typ == "pause":
+            if typ in ("pause", "lost"):
                 dur = ev.get("dur_sec", 0.0)
                 if t <= et + dur:
-                    return song, pos  # 暂停期间冻结
+                    return song, pos  # 暂停/失锁期间冻结
                 cur = et + dur
             elif typ == "replay":
                 pos = 0.0
@@ -215,12 +215,12 @@ def _p90(xs) -> float | None:
 def _recovery_times(results: list[dict], gt_map: dict) -> list[float]:
     """事件样本恢复时间：引擎对应事件时间 - 真值事件生效时刻。
 
-    - 暂停：引擎 `resume` 事件时刻 - (暂停 t + dur)，即音频恢复后的重新对齐耗时。
+    - 暂停 / 失锁：引擎 `resume` 事件时刻 - (事件 t + dur)，即内容恢复后的重新对齐耗时。
     - 重唱：引擎 `replay` 事件时刻 - 真值 replay t。
     - 切歌：引擎 `switch` 事件时刻 - 真值 switch t。
     """
     times: list[float] = []
-    eng_type_for = {"pause": "resume", "replay": "replay", "switch": "switch"}
+    eng_type_for = {"pause": "resume", "lost": "resume", "replay": "replay", "switch": "switch"}
     for r in results:
         label = gt_map[r["sample_id"]]
         evs = sorted(label.get("events") or [], key=lambda e: e["t"])
@@ -230,7 +230,7 @@ def _recovery_times(results: list[dict], gt_map: dict) -> list[float]:
             target = eng_type_for.get(typ)
             if target is None:
                 continue
-            ref_t = ev["t"] + ev.get("dur_sec", 0.0) if typ == "pause" else ev["t"]
+            ref_t = ev["t"] + ev.get("dur_sec", 0.0) if typ in ("pause", "lost") else ev["t"]
             found = None
             for et, ety, _, _ in eng_events:
                 if ety == target and et >= ref_t - 1e-6:
@@ -338,7 +338,7 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     line(f"| 曲库外歌曲数 | 1 | 合成旋律 | 模拟 |")
     line(f"| 合成样本（正常回放） | {m['n_normal']} | 识别/定位/同步，含整曲 {m['n_full']} 段 | 模拟 |")
     line(f"| 合成样本（变调/变速） | {m['n_pitch_speed']} | ±1 半音、±5% 变速 | 模拟 |")
-    line(f"| 事件样本（暂停/重唱/切歌） | {m['n_event']} | 各含真值事件标注 | 模拟 |")
+    line(f"| 事件样本（暂停/重唱/切歌/失锁） | {m['n_event']} | 各含真值事件标注 | 模拟 |")
     line(f"| 曲库外样本 | {m['n_out_lib']} | 拒识测试 | 模拟 |")
     line(f"| 真实 KTV 录音 | 0 | 待人类提供（已向 @张洪清 请求） | — |")
     line()
@@ -400,7 +400,7 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
 
     # 3.5
     rc = m["recovery"]
-    line("### 3.5 暂停 / 重唱 / 切歌恢复（自动恢复，3s 内重新对齐）【模拟】")
+    line("### 3.5 暂停 / 重唱 / 切歌 / 失锁恢复（自动恢复，3s 内重新对齐）【模拟】")
     line()
     line(f"- 事件样本 {m['n_event']} 段，恢复时间中位数 **{_fmt(rc['median'])}s**，P90 {_fmt(rc['p90'])}s，3s 内对齐 {rc['under3s']}/{rc['n']}。")
     line(f"- 自动恢复（0 手动干预）：是。")
@@ -456,7 +456,7 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     line(f"| 识别准确率 | Top-1 > 95%；曲库外明确未识别 | {_pct(acc)} / 拒识 {_pct(ol['reject_rate'])} | 待真实录音确认（模拟通过） |")
     line(f"| 初始定位误差 | 中位数 < 200ms | {_fmt_ms(oe['median'])} | 待真实录音确认（模拟通过） |")
     line(f"| 持续同步 | 无手动干预、无可见跳动 | 违规 {len(sy['violations'])} 条 | 待真实录音确认（模拟通过） |")
-    line(f"| 暂停/重唱/切歌恢复 | 自动恢复，3s 内对齐 | 中位 {_fmt(rc['median'])}s | 待真实录音确认（模拟通过） |")
+    line(f"| 暂停/重唱/切歌/失锁恢复 | 自动恢复，3s 内对齐 | 中位 {_fmt(rc['median'])}s | 待真实录音确认（模拟通过） |")
     line(f"| 变调变速鲁棒性 | 决定是否切 Panako | Top-1 {_pct(ps_acc)} | {'启动 Panako 评估' if switch else '维持'} |")
     line()
 

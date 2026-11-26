@@ -4,6 +4,10 @@ captured_at 语义（DESIGN 3.3 / RISKS R7）：
 - 实时麦克风用 wall clock（WallClock.now() = monotonic）。
 - 文件回放用文件内时间戳（FileClock，随 chunk advance）。
 - 补偿：position_now = position_capture + (applied_at - captured_at) * rate。
+
+rate 估计（DESIGN 3.3）：rate 测量锚点与位置锚点分离——`_rate_ref/_rate_cap` 只在
+「累计间隔 ≥ rate_min_span 且 raw 通过 0.85~1.15 过滤」时才计算并重置，不随每次重对齐
+重置，避免 span 恒等于重对齐周期导致 rate 恒为 1.0。
 """
 from __future__ import annotations
 
@@ -97,14 +101,16 @@ class SyncEngine:
         self._buffer = np.zeros(0, dtype=np.float32)
 
         self._current_song: str | None = None
-        self._truth: tuple[float, float] | None = None   # (ref_at_capture, captured_at)
-        self._disp: tuple[float, float] | None = None
+        self._disp: tuple[float, float] | None = None     # 显示/位置锚点 (ref_at_capture, captured_at)
         self._rate = 1.0
+        self._rate_ref: float | None = None               # rate 测量锚点（独立于位置锚点）
+        self._rate_cap: float | None = None
         self._slew: _Slew | None = None
         self._frozen_pos: float | None = None
 
         self._last_realign = float("-inf")
-        self._fail_streak = 0
+        self._fail_streak = 0                             # 连续失败的匹配尝试次数
+        self._low_energy_sec = 0.0                        # 连续低能量时长（秒）
         self._last_energy = 0.0
 
     # -- 查询接口 ----------------------------------------------------------
@@ -146,6 +152,7 @@ class SyncEngine:
         samples = np.asarray(samples, dtype=np.float32)
         events: list[Event] = []
         self._last_energy = rms(samples)
+        chunk_dur = len(samples) / self.cfg.sample_rate
 
         self._buffer = np.concatenate([self._buffer, samples])
         max_len = self.cfg.match_window_samples + self.cfg.hop * 4
@@ -169,10 +176,12 @@ class SyncEngine:
                 self._last_realign = captured_at
             else:
                 self._fail_streak += 1
-        elif low_energy:
-            self._fail_streak += 1
+
+        # 低能量时长追踪（用于暂停判定），音频恢复即清零
+        if low_energy:
+            self._low_energy_sec += chunk_dur
         else:
-            self._fail_streak = 0
+            self._low_energy_sec = 0.0
 
         events.extend(self._update_state(captured_at))
         return events
@@ -191,6 +200,7 @@ class SyncEngine:
             self._current_song = res.song_id
             self._rate = 1.0
             self._set_anchor(ref_at_capture, captured_at)
+            self._reset_rate_anchor(ref_at_capture, captured_at)
             self._state = SyncState.PLAYING
             self._frozen_pos = None
             events.append(Event(EventType.RECOGNIZED, res.song_id, ref_at_capture, captured_at,
@@ -203,6 +213,7 @@ class SyncEngine:
             self._current_song = res.song_id
             self._rate = 1.0
             self._set_anchor(ref_at_capture, captured_at)
+            self._reset_rate_anchor(ref_at_capture, captured_at)
             self._state = SyncState.PLAYING
             self._frozen_pos = None
             events.append(Event(EventType.SWITCH, res.song_id, ref_at_capture, captured_at,
@@ -213,17 +224,19 @@ class SyncEngine:
         if prev_state in (SyncState.PAUSED, SyncState.LOST):
             self._state = SyncState.PLAYING
             self._frozen_pos = None
+            self._reset_rate_anchor(ref_at_capture, captured_at)
             events.append(Event(EventType.RESUME, self._current_song, ref_at_capture, captured_at,
                                 f"from={prev_state.value}"))
 
-        # 同一首歌：rate 估计
-        if self._truth is not None:
-            span = captured_at - self._truth[1]
+        # 同一首歌：rate 估计（rate 锚点独立，只在累计 ≥10s 时测量并重置）
+        if self._rate_ref is not None:
+            span = captured_at - self._rate_cap
             if span >= self.cfg.rate_min_span:
-                raw = (ref_at_capture - self._truth[0]) / span
+                raw = (ref_at_capture - self._rate_ref) / span
                 if self.cfg.rate_min <= raw <= self.cfg.rate_max:
                     self._rate = self._rate * (1 - self.cfg.rate_ema) + raw * self.cfg.rate_ema
-        self._truth = (ref_at_capture, captured_at)
+                self._rate_ref = ref_at_capture
+                self._rate_cap = captured_at
 
         expected = self.position_at(captured_at).position
         deviation = ref_at_capture - expected
@@ -232,6 +245,7 @@ class SyncEngine:
         if deviation < -self.cfg.correct_large and ref_at_capture <= self.cfg.replay_max_pos:
             self._rate = 1.0
             self._set_anchor(ref_at_capture, captured_at)
+            self._reset_rate_anchor(ref_at_capture, captured_at)
             self._state = SyncState.PLAYING
             self._frozen_pos = None
             events.append(Event(EventType.REPLAY, self._current_song, ref_at_capture, captured_at,
@@ -250,21 +264,26 @@ class SyncEngine:
         return events
 
     def _set_anchor(self, ref: float, captured_at: float) -> None:
-        self._truth = (ref, captured_at)
         self._disp = (ref, captured_at)
         self._slew = None
+
+    def _reset_rate_anchor(self, ref: float, captured_at: float) -> None:
+        self._rate_ref = ref
+        self._rate_cap = captured_at
 
     def _update_state(self, captured_at: float) -> list[Event]:
         events: list[Event] = []
         low_energy = self._last_energy < self.cfg.low_energy_rms
 
         if self._state == SyncState.PLAYING:
-            if low_energy and self._fail_streak >= self.cfg.pause_fail_streak:
+            if self._low_energy_sec >= self.cfg.pause_min_energy_sec:
+                # 音频能量持续低 -> 暂停（进度冻结）
                 self._state = SyncState.PAUSED
                 self._frozen_pos = self.position_at(captured_at).position
                 events.append(Event(EventType.PAUSED, self._current_song, self._frozen_pos,
-                                    captured_at, "低能量且匹配持续失败"))
+                                    captured_at, "低能量持续"))
             elif (not low_energy) and self._fail_streak >= self.cfg.lost_fail_streak:
+                # 匹配持续失败但非低能量 -> 失锁（后台重试识别）
                 self._state = SyncState.LOST
                 self._frozen_pos = self.position_at(captured_at).position
                 events.append(Event(EventType.LOST, self._current_song, None, captured_at,

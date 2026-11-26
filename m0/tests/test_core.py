@@ -9,7 +9,7 @@ import numpy as np
 from singalong import fingerprint, synth
 from singalong.config import DEFAULT_CONFIG
 from singalong.matcher import Matcher
-from singalong.sync_engine import EventType, FileClock, SyncEngine
+from singalong.sync_engine import EventType, FileClock, SyncEngine, SyncState
 from singalong.timeline import current_line, load_timeline
 import os, tempfile, json
 
@@ -53,6 +53,16 @@ class TestMatcher(unittest.TestCase):
 
 
 class TestSyncEngine(unittest.TestCase):
+    def _run(self, eng, sig, sr=16000, step=0.1):
+        events = []
+        pos = 0
+        while pos < len(sig):
+            chunk = sig[pos:pos + int(step * sr)]
+            eng.clock.advance(len(chunk) / sr)
+            events.extend(eng.push(chunk, eng.clock.now()))
+            pos += int(step * sr)
+        return events
+
     def test_recognize_then_replay(self):
         index = _index_of([("A", 1, 0)])
         matcher = Matcher(index, DEFAULT_CONFIG)
@@ -83,6 +93,42 @@ class TestSyncEngine(unittest.TestCase):
             pos += int(0.1 * sr)
         types2 = [e.type for e in events2]
         self.assertIn(EventType.REPLAY, types2)
+
+    def test_rate_estimation_tracks_speed(self):
+        # 变速 1.05 连播 >10s，断言 rate 明显偏离 1.0 并朝 1.05 收敛（RISKS R3 / DESIGN 3.3）
+        ref = synth.generate_song(1, 60.0, band_index=0)
+        index = {}
+        for h, t in fingerprint.fingerprint(ref, DEFAULT_CONFIG):
+            index.setdefault(h, []).append(("A", t))
+        matcher = Matcher(index, DEFAULT_CONFIG)
+        eng = SyncEngine(matcher, FileClock(), DEFAULT_CONFIG)
+
+        song = synth.generate_song(1, 60.0, time_scale=1.05, band_index=0)
+        sr = 16000
+        self._run(eng, song[:int(40.0 * sr)])
+        self.assertGreater(eng.rate, 1.01, f"rate 应朝 1.05 收敛，实际 {eng.rate:.4f}")
+        self.assertLess(eng.rate, 1.06, f"rate 不应超调，实际 {eng.rate:.4f}")
+
+    def test_lost_then_resume(self):
+        # 识别成功 -> 高能量无法匹配噪声 -> LOST -> 恢复原曲 -> RESUME
+        index = _index_of([("A", 1, 0)])
+        matcher = Matcher(index, DEFAULT_CONFIG)
+        eng = SyncEngine(matcher, FileClock(), DEFAULT_CONFIG)
+        song = synth.generate_song(1, 16.0, band_index=0)
+        sr = 16000
+
+        events = self._run(eng, song[:int(6.0 * sr)])
+        self.assertIn(EventType.RECOGNIZED, [e.type for e in events])
+
+        rng = np.random.default_rng(0)
+        noise = rng.normal(0.0, 0.2, int(8.0 * sr)).astype(np.float32)
+        events += self._run(eng, noise)
+        self.assertIn(EventType.LOST, [e.type for e in events])
+        self.assertEqual(eng.state, SyncState.LOST)
+
+        events += self._run(eng, song[int(6.0 * sr):int(12.0 * sr)])
+        self.assertIn(EventType.RESUME, [e.type for e in events])
+        self.assertEqual(eng.state, SyncState.PLAYING)
 
 
 class TestTimeline(unittest.TestCase):

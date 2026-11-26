@@ -360,6 +360,24 @@
       "notes": "重唱(回开头)"
     },
     {
+      "sample_id": "synth_S001_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_lost.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
+    },
+    {
       "sample_id": "synth_S002_pause",
       "kind": "synth",
       "audio_path": "eval/synth/synth_S002_pause.wav",
@@ -395,6 +413,24 @@
       "notes": "重唱(回开头)"
     },
     {
+      "sample_id": "synth_S002_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_lost.wav",
+      "song_id": "S002",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
+    },
+    {
       "sample_id": "synth_S003_pause",
       "kind": "synth",
       "audio_path": "eval/synth/synth_S003_pause.wav",
@@ -428,6 +464,24 @@
       "freq_scale": 1.0,
       "time_scale": 1.0,
       "notes": "重唱(回开头)"
+    },
+    {
+      "sample_id": "synth_S003_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_lost.wav",
+      "song_id": "S003",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
     },
     {
       "sample_id": "synth_switch_S001_S002",

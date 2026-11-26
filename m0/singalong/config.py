@@ -36,8 +36,8 @@ class Config:
     correct_large: float = 1.0           # >1s 跳转
     slew_duration: float = 1.5           # 渐进校正时长（秒）
     low_energy_rms: float = 0.005        # 判定“音频能量低”的 RMS 阈值
-    pause_fail_streak: int = 4           # 连续匹配失败 + 低能量触发暂停的次数
-    lost_fail_streak: int = 6            # 连续匹配失败（非暂停）触发失锁的次数
+    pause_min_energy_sec: float = 1.0    # 连续低能量触发暂停的时长（秒）
+    lost_fail_streak: int = 3            # 连续匹配失败触发失锁的次数（非低能量）
     replay_max_pos: float = 20.0         # 重唱判定：offset 回退到该位置以内视为开头附近
 
     # 时间轴渲染
