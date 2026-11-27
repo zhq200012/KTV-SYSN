@@ -155,7 +155,13 @@ class SyncEngine:
         chunk_dur = len(samples) / self.cfg.sample_rate
 
         self._buffer = np.concatenate([self._buffer, samples])
-        max_len = self.cfg.match_window_samples + self.cfg.hop * 4
+        # 仅「识别中」允许窗口增长到 match_window_max，用更多上下文消歧重复段；
+        # 失锁/播放/暂停保持短窗口：失锁恢复要能尽快从噪声中锁定回真实音频，
+        # 播放中短窗口保证重唱/切歌检测的低延迟。
+        if self._state == SyncState.RECOGNIZING:
+            max_len = self.cfg.match_window_max_samples + self.cfg.hop * 4
+        else:
+            max_len = self.cfg.match_window_samples + self.cfg.hop * 4
         if len(self._buffer) > max_len:
             self._buffer = self._buffer[-max_len:]
 
@@ -170,12 +176,15 @@ class SyncEngine:
 
         if should_match and len(self._buffer) >= window_samples and not low_energy:
             res = self._try_match()
-            if res is not None:
+            if res is None:
+                self._fail_streak += 1
+            elif self._state == SyncState.RECOGNIZING and res.ambiguous:
+                # 识别中歧义：等更多上下文（缓冲继续增长到 match_window_max），暂不识别
+                pass
+            else:
                 self._fail_streak = 0
                 events.extend(self._on_match(res, captured_at))
                 self._last_realign = captured_at
-            else:
-                self._fail_streak += 1
 
         # 低能量时长追踪（用于暂停判定），音频恢复即清零
         if low_energy:
@@ -228,6 +237,10 @@ class SyncEngine:
             events.append(Event(EventType.RESUME, self._current_song, ref_at_capture, captured_at,
                                 f"from={prev_state.value}"))
 
+        # 重复段歧义：不据此更新 rate / 判重唱 / 校正位置，保持当前进度
+        if res.ambiguous:
+            return events
+
         # 同一首歌：rate 估计（rate 锚点独立，只在累计 ≥10s 时测量并重置）
         if self._rate_ref is not None:
             span = captured_at - self._rate_cap
@@ -278,14 +291,16 @@ class SyncEngine:
         if self._state == SyncState.PLAYING:
             if self._low_energy_sec >= self.cfg.pause_min_energy_sec:
                 # 音频能量持续低 -> 暂停（进度冻结）
+                frozen = self.position_at(captured_at).position  # 先取当前进度，再切状态
                 self._state = SyncState.PAUSED
-                self._frozen_pos = self.position_at(captured_at).position
+                self._frozen_pos = frozen
                 events.append(Event(EventType.PAUSED, self._current_song, self._frozen_pos,
                                     captured_at, "低能量持续"))
             elif (not low_energy) and self._fail_streak >= self.cfg.lost_fail_streak:
                 # 匹配持续失败但非低能量 -> 失锁（后台重试识别）
+                frozen = self.position_at(captured_at).position  # 先取当前进度，再切状态
                 self._state = SyncState.LOST
-                self._frozen_pos = self.position_at(captured_at).position
+                self._frozen_pos = frozen
                 events.append(Event(EventType.LOST, self._current_song, None, captured_at,
                                     "匹配持续失败但非暂停"))
         return events

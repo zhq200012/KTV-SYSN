@@ -24,9 +24,11 @@ class Config:
     confidence_threshold: float = 0.10   # aligned/query 下限
     min_align: int = 5                   # 最少对齐指纹数
     uniqueness_margin: float = 1.5       # top 与 second 得票边际
+    offset_peak_sep: float = 0.5         # offset 直方图「独立峰」最小间隔（秒），重复段消歧用
 
     # 同步引擎
-    match_window: float = 2.0            # 匹配滚动窗口（秒）
+    match_window: float = 2.0            # 首次匹配最小窗口（秒），保证 <5s 识别
+    match_window_max: float = 8.0        # 歧义时窗口增长上限（秒），重复段靠更多上下文消歧
     realign_interval: float = 2.0        # 重对齐周期（秒）
     rate_min_span: float = 10.0          # rate 估计最小测量间隔（秒）
     rate_min: float = 0.85
@@ -57,6 +59,10 @@ class Config:
     @property
     def match_window_samples(self) -> int:
         return int(round(self.match_window * self.sample_rate))
+
+    @property
+    def match_window_max_samples(self) -> int:
+        return int(round(self.match_window_max * self.sample_rate))
 
 
 DEFAULT_CONFIG = Config()

@@ -20,6 +20,7 @@ class MatchResult:
     aligned_count: int
     query_hashes: int
     second_count: int      # 得票第二候选的 aligned 数
+    ambiguous: bool = False  # 重复段歧义：offset 直方图存在远隔的次优峰（near-tie）
 
 
 class Matcher:
@@ -71,6 +72,17 @@ class Matcher:
         if best_count < self.cfg.uniqueness_margin * second_count:
             return None
 
+        # 重复段消歧：最佳 offset 峰与远隔的次优峰若接近（near-tie），
+        # 说明窗口内重复段落有歧义（同一段旋律在曲中多处出现，offset 直方图双峰）。
+        # 标记为 ambiguous：识别阶段据此继续累积上下文；重对齐阶段据此保持当前进度而不跳转。
+        d = votes[best_song]
+        sep_bins = max(1, int(round(self.cfg.offset_peak_sep / self.cfg.offset_bin)))
+        far_count = 0
+        for b, c in d.items():
+            if abs(b - best_bin) > sep_bins and c > far_count:
+                far_count = c
+        ambiguous = far_count > 0 and best_count < self.cfg.uniqueness_margin * far_count
+
         return MatchResult(
             song_id=best_song,
             offset=offset,
@@ -78,6 +90,7 @@ class Matcher:
             aligned_count=best_count,
             query_hashes=len(query_hashes),
             second_count=second_count,
+            ambiguous=ambiguous,
         )
 
     def _refine_offset(self, d: dict[int, int], b: int) -> float:

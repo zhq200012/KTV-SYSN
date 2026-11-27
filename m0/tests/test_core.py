@@ -13,15 +13,16 @@ from singalong.sync_engine import EventType, FileClock, SyncEngine, SyncState
 from singalong.timeline import current_line, load_timeline
 from singalong.lyrics import parse_lrc
 from singalong import eval_runner
+from singalong.index_store import load_index
 import os, tempfile, json
 from unittest import mock
 
 
-def _index_of(songs):
-    """songs: [(song_id, seed, band)] -> Index。"""
+def _index_of(songs, duration=4.0):
+    """songs: [(song_id, seed, band)] -> Index（默认索引 duration 秒参考）。"""
     index = {}
     for sid, seed, band in songs:
-        samples = synth.generate_song(seed, 4.0, band_index=band)
+        samples = synth.generate_song(seed, duration, band_index=band)
         for h, t in fingerprint.fingerprint(samples, DEFAULT_CONFIG):
             index.setdefault(h, []).append((sid, t))
     return index
@@ -114,7 +115,8 @@ class TestSyncEngine(unittest.TestCase):
 
     def test_lost_then_resume(self):
         # 识别成功 -> 高能量无法匹配噪声 -> LOST -> 恢复原曲 -> RESUME
-        index = _index_of([("A", 1, 0)])
+        # 索引覆盖整首（16s），保证恢复段（6~12s）在曲库内、非靠误匹配触发。
+        index = _index_of([("A", 1, 0)], duration=16.0)
         matcher = Matcher(index, DEFAULT_CONFIG)
         eng = SyncEngine(matcher, FileClock(), DEFAULT_CONFIG)
         song = synth.generate_song(1, 16.0, band_index=0)
@@ -209,6 +211,54 @@ class TestEvalSplit(unittest.TestCase):
         md = eval_runner.render_report(report, DEFAULT_CONFIG, commit="test")
         self.assertIn("真实（干净源）", md)
         self.assertIn("【模拟】", md)
+
+
+class TestRepeatDisambiguation(unittest.TestCase):
+    """重复副歌段消歧回归：短窗口歧义 -> 更长窗口消歧；offset 唯一性校验生效。"""
+
+    def test_short_window_ambiguous_longer_disambiguates(self):
+        sr = 16000
+        intro = synth.generate_song(11, 4.0, band_index=0)
+        chorus = synth.generate_song(12, 4.0, band_index=0)
+        verse = synth.generate_song(13, 4.0, band_index=0)
+        # 副歌在 4~8s 与 12~16s 重复出现
+        ref = np.concatenate([intro, chorus, verse, chorus])
+        index = {}
+        for h, t in fingerprint.fingerprint(ref, DEFAULT_CONFIG):
+            index.setdefault(h, []).append(("REP", t))
+        matcher = Matcher(index, DEFAULT_CONFIG)
+
+        # 2s 窗口（副歌内）：与另一处副歌打成平手 -> 歧义
+        r2 = matcher.match(fingerprint.fingerprint(ref[4*sr:6*sr], DEFAULT_CONFIG))
+        self.assertIsNotNone(r2)
+        self.assertTrue(r2.ambiguous, "2s 窗口在重复副歌段应判定为歧义")
+
+        # 6s 窗口（副歌 + 主歌）：唯一 -> 消歧，offset 落在 4s
+        r6 = matcher.match(fingerprint.fingerprint(ref[4*sr:10*sr], DEFAULT_CONFIG))
+        self.assertIsNotNone(r6)
+        self.assertFalse(r6.ambiguous)
+        self.assertAlmostEqual(r6.offset, 4.0, delta=0.2)
+
+
+def _real_data_available() -> bool:
+    return os.path.exists("data/library.db") and os.path.exists("data/eval/real/real_R001_off180.wav")
+
+
+class TestRealRepeatRegression(unittest.TestCase):
+    """真实曲目重复副歌回归（依赖本地不入库数据，缺失则跳过）。"""
+
+    @unittest.skipUnless(_real_data_available(), "需要本地真实曲目数据（不入库）")
+    def test_real_r001_off180_offset_within_1s(self):
+        """回归：R001 off180（重复副歌段）初始定位误差不得出现 >1s 离群。"""
+        index = load_index("data/library.db")
+        matcher = Matcher(index, DEFAULT_CONFIG)
+        with open("data/eval/manifest.json", encoding="utf-8") as f:
+            labels = json.load(f)["samples"]
+        lb = [x for x in labels if x["sample_id"] == "real_R001_off180"][0]
+        r = eval_runner.evaluate_sample(matcher, lb, "data", DEFAULT_CONFIG)
+        self.assertTrue(r["recognized"], "off180 应能识别")
+        self.assertIsNotNone(r["first_offset_error"])
+        self.assertLess(r["first_offset_error"], 1.0, "off180 初始定位误差不得 >1s")
 
 
 if __name__ == "__main__":

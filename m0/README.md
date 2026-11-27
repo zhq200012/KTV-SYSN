@@ -58,7 +58,7 @@ python -m singalong dataset-build
 
 ## 关键参数
 
-全部在 `singalong/config.py`，可调：指纹 FFT 4096/hop 512、频率量化到 FFT bin（≈3.9Hz）、offset bin 32ms（≤50ms，RISKS R2）、置信阈值 0.10、min_align 5、rate 估计 0.85~1.15 + 10% EMA、三级校正 100ms/1s。
+全部在 `singalong/config.py`，可调：指纹 FFT 4096/hop 512、频率量化到 FFT bin（≈3.9Hz）、offset bin 32ms（≤50ms，RISKS R2）、置信阈值 0.10、min_align 5、rate 估计 0.85~1.15 + 10% EMA、三级校正 100ms/1s。重复副歌段消歧：识别期匹配窗口 2s→8s 增长（`match_window_max`）+ offset 唯一性校验（`offset_peak_sep`/`uniqueness_margin`），歧义时继续累积上下文而不猜测。
 
 ## 常见问题
 
