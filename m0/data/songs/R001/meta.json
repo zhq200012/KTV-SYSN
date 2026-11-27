@@ -1,0 +1,10 @@
+{
+  "song_id": "R001",
+  "title": "真实曲目 001（干净源）",
+  "language": "zh",
+  "license": "user",
+  "source": "real_001.wav",
+  "audio_path": "songs/R001/reference.wav",
+  "duration_sec": 283.9,
+  "timeline_path": "songs/R001/timeline.json"
+}

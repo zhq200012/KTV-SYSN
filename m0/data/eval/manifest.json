@@ -525,6 +525,90 @@
       "freq_scale": 1.0,
       "time_scale": 1.0,
       "notes": "曲库外"
+    },
+    {
+      "sample_id": "real_R001_off0",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off0.wav",
+      "song_id": "R001",
+      "start_offset_sec": 0.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off15",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off15.wav",
+      "song_id": "R001",
+      "start_offset_sec": 15.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off60",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off60.wav",
+      "song_id": "R001",
+      "start_offset_sec": 60.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off120",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off120.wav",
+      "song_id": "R001",
+      "start_offset_sec": 120.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off180",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off180.wav",
+      "song_id": "R001",
+      "start_offset_sec": 180.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off240",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off240.wav",
+      "song_id": "R001",
+      "start_offset_sec": 240.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_full",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_full.wav",
+      "song_id": "R001",
+      "start_offset_sec": 0.0,
+      "duration_sec": 90.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "整曲同步（干净源自匹配）"
     }
   ]
 }
