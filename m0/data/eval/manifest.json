@@ -1,0 +1,614 @@
+{
+  "samples": [
+    {
+      "sample_id": "synth_S001_off2",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_off2.wav",
+      "song_id": "S001",
+      "start_offset_sec": 2.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S001_off10",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_off10.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S001_off20",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_off20.wav",
+      "song_id": "S001",
+      "start_offset_sec": 20.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S001_off30",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_off30.wav",
+      "song_id": "S001",
+      "start_offset_sec": 30.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S002_off2",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_off2.wav",
+      "song_id": "S002",
+      "start_offset_sec": 2.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S002_off10",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_off10.wav",
+      "song_id": "S002",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S002_off20",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_off20.wav",
+      "song_id": "S002",
+      "start_offset_sec": 20.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S002_off30",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_off30.wav",
+      "song_id": "S002",
+      "start_offset_sec": 30.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S003_off2",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_off2.wav",
+      "song_id": "S003",
+      "start_offset_sec": 2.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S003_off10",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_off10.wav",
+      "song_id": "S003",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S003_off20",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_off20.wav",
+      "song_id": "S003",
+      "start_offset_sec": 20.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S003_off30",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_off30.wav",
+      "song_id": "S003",
+      "start_offset_sec": 30.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S004_off2",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S004_off2.wav",
+      "song_id": "S004",
+      "start_offset_sec": 2.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S004_off10",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S004_off10.wav",
+      "song_id": "S004",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S004_off20",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S004_off20.wav",
+      "song_id": "S004",
+      "start_offset_sec": 20.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S004_off30",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S004_off30.wav",
+      "song_id": "S004",
+      "start_offset_sec": 30.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S005_off2",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S005_off2.wav",
+      "song_id": "S005",
+      "start_offset_sec": 2.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S005_off10",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S005_off10.wav",
+      "song_id": "S005",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S005_off20",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S005_off20.wav",
+      "song_id": "S005",
+      "start_offset_sec": 20.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S005_off30",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S005_off30.wav",
+      "song_id": "S005",
+      "start_offset_sec": 30.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净(SNR20/人声-6dB)"
+    },
+    {
+      "sample_id": "synth_S001_start0",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_start0.wav",
+      "song_id": "S001",
+      "start_offset_sec": 0.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "起播位置0%（合成无静音前奏）"
+    },
+    {
+      "sample_id": "synth_S001_full",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_full.wav",
+      "song_id": "S001",
+      "start_offset_sec": 2.0,
+      "duration_sec": 36.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "整曲回放"
+    },
+    {
+      "sample_id": "synth_S002_full",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_full.wav",
+      "song_id": "S002",
+      "start_offset_sec": 2.0,
+      "duration_sec": 36.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "整曲回放"
+    },
+    {
+      "sample_id": "synth_S001_pitch-1",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_pitch-1.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 0.9438743126816935,
+      "time_scale": 1.0,
+      "notes": "变调-1半音"
+    },
+    {
+      "sample_id": "synth_S001_pitch+1",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_pitch+1.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0594630943592953,
+      "time_scale": 1.0,
+      "notes": "变调+1半音"
+    },
+    {
+      "sample_id": "synth_S001_speed0.95",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_speed0.95.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 0.95,
+      "notes": "变速0.95"
+    },
+    {
+      "sample_id": "synth_S001_speed1.05",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_speed1.05.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.05,
+      "notes": "变速1.05"
+    },
+    {
+      "sample_id": "synth_S001_pause",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_pause.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "pause",
+          "dur_sec": 2.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "暂停 2s"
+    },
+    {
+      "sample_id": "synth_S001_replay",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_replay.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 8.0,
+          "type": "replay"
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "重唱(回开头)"
+    },
+    {
+      "sample_id": "synth_S001_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S001_lost.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
+    },
+    {
+      "sample_id": "synth_S002_pause",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_pause.wav",
+      "song_id": "S002",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "pause",
+          "dur_sec": 2.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "暂停 2s"
+    },
+    {
+      "sample_id": "synth_S002_replay",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_replay.wav",
+      "song_id": "S002",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 8.0,
+          "type": "replay"
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "重唱(回开头)"
+    },
+    {
+      "sample_id": "synth_S002_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S002_lost.wav",
+      "song_id": "S002",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
+    },
+    {
+      "sample_id": "synth_S003_pause",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_pause.wav",
+      "song_id": "S003",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "pause",
+          "dur_sec": 2.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "暂停 2s"
+    },
+    {
+      "sample_id": "synth_S003_replay",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_replay.wav",
+      "song_id": "S003",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 8.0,
+          "type": "replay"
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "重唱(回开头)"
+    },
+    {
+      "sample_id": "synth_S003_lost",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_S003_lost.wav",
+      "song_id": "S003",
+      "start_offset_sec": 10.0,
+      "duration_sec": 20.0,
+      "events": [
+        {
+          "t": 6.0,
+          "type": "lost",
+          "dur_sec": 8.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "失锁：高能量噪声 8s 后恢复"
+    },
+    {
+      "sample_id": "synth_switch_S001_S002",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_switch_S001_S002.wav",
+      "song_id": "S001",
+      "start_offset_sec": 10.0,
+      "duration_sec": 14.0,
+      "events": [
+        {
+          "t": 8.0,
+          "type": "switch",
+          "song_id": "S002",
+          "start_offset_sec": 0.0
+        }
+      ],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "切歌 S001->S002"
+    },
+    {
+      "sample_id": "synth_OUT1_0",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_OUT1_0.wav",
+      "song_id": null,
+      "start_offset_sec": null,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "曲库外"
+    },
+    {
+      "sample_id": "synth_OUT1_1",
+      "kind": "synth",
+      "audio_path": "eval/synth/synth_OUT1_1.wav",
+      "song_id": null,
+      "start_offset_sec": null,
+      "duration_sec": 8.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "曲库外"
+    },
+    {
+      "sample_id": "real_R001_off0",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off0.wav",
+      "song_id": "R001",
+      "start_offset_sec": 0.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off15",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off15.wav",
+      "song_id": "R001",
+      "start_offset_sec": 15.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off60",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off60.wav",
+      "song_id": "R001",
+      "start_offset_sec": 60.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off120",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off120.wav",
+      "song_id": "R001",
+      "start_offset_sec": 120.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off180",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off180.wav",
+      "song_id": "R001",
+      "start_offset_sec": 180.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_off240",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_off240.wav",
+      "song_id": "R001",
+      "start_offset_sec": 240.0,
+      "duration_sec": 12.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "干净源自匹配"
+    },
+    {
+      "sample_id": "real_R001_full",
+      "kind": "real",
+      "audio_path": "eval/real/real_R001_full.wav",
+      "song_id": "R001",
+      "start_offset_sec": 0.0,
+      "duration_sec": 90.0,
+      "events": [],
+      "freq_scale": 1.0,
+      "time_scale": 1.0,
+      "notes": "整曲同步（干净源自匹配）"
+    }
+  ]
+}

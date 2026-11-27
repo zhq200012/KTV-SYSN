@@ -1,0 +1,10 @@
+{
+  "song_id": "S004",
+  "title": "合成歌曲四",
+  "language": "zh",
+  "license": "self-made",
+  "source": "synth",
+  "audio_path": "songs/S004/reference.wav",
+  "duration_sec": 40.0,
+  "timeline_path": "songs/S004/timeline.json"
+}
