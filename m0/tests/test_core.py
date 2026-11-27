@@ -135,6 +135,31 @@ class TestSyncEngine(unittest.TestCase):
         self.assertIn(EventType.RESUME, [e.type for e in events])
         self.assertEqual(eng.state, SyncState.PLAYING)
 
+    def test_frozen_position_equals_extrapolated(self):
+        # 回归 7ea3f55：失锁瞬间冻结进度 = 切换前的外推进度，而非识别锚点。
+        index = _index_of([("A", 1, 0)], duration=16.0)
+        matcher = Matcher(index, DEFAULT_CONFIG)
+        eng = SyncEngine(matcher, FileClock(), DEFAULT_CONFIG)
+        song = synth.generate_song(1, 16.0, band_index=0)
+        sr = 16000
+
+        # 识别（锚点约 2s）并推进到 6s，进度外推
+        self._run(eng, song[:int(6.0 * sr)])
+        self.assertEqual(eng.current_song, "A")
+        pos_before = eng.position_at(eng.clock.now()).position
+        self.assertAlmostEqual(pos_before, 6.0, delta=0.3)
+
+        # 喂噪声触发失锁
+        rng = np.random.default_rng(0)
+        noise = rng.normal(0.0, 0.2, int(8.0 * sr)).astype(np.float32)
+        self._run(eng, noise)
+        self.assertEqual(eng.state, SyncState.LOST)
+
+        # 冻结进度应 ≈ 失锁时刻外推进度（>识别锚点），而非锚点 ~2s
+        frozen = eng.position_at(eng.clock.now()).position
+        self.assertGreater(frozen, pos_before + 1.0, "冻结进度应外推，而非停在识别锚点")
+        self.assertLess(frozen, pos_before + 9.0)
+
 
 class TestTimeline(unittest.TestCase):
     def test_load_and_current_line(self):

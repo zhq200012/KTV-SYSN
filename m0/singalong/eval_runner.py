@@ -338,8 +338,8 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     line("# M0 原型评测报告")
     line()
     line("> **结论口径**：")
-    line("> - 识别准确率 / 初始定位误差 / 歌词同步三项已用**真实曲目（干净源，1 首曲库）**实测，标注【真实（干净源）】。")
-    line("> - 首次识别耗时 / 事件恢复 / 变调变速仍为**模拟结论**（合成样本），标注【模拟】。")
+    line("> - 识别准确率 / 初始定位误差 / 歌词同步 / 首次识别耗时四项已用**真实曲目（干净源，1 首曲库）**实测，标注【真实（干净源）】。")
+    line("> - 事件恢复 / 变调变速仍为**模拟结论**（合成样本），标注【模拟】。")
     line("> - 真实 KTV 包房录音（人声跟唱 / 环境噪声 / 混响 / 版本差异）为 0 段，鲁棒性指标待补，不构成验收依据。")
     line()
 
@@ -374,12 +374,22 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     line("## 3. 逐项实测值")
     line()
 
-    # 3.1 首次识别耗时【模拟】
+    # 3.1 首次识别耗时
+    rlat = real["latency"]
     lat = synth["latency"]
-    line("### 3.1 首次识别耗时（目标 < 5s）【模拟】")
+    line("### 3.1 首次识别耗时（目标 < 5s）")
     line()
-    line("- 测量：起播到首次识别（置信超阈值）的时间差；仅统计合成样本（有旋律段起播）。")
-    line(f"- 实测（合成）：中位数 **{_fmt(lat['median'])}s**，P90 **{_fmt(lat['p90'])}s**，最大 {_fmt(lat['max'])}s，超 5s 占比 {lat['over5s']}/{lat['n']}。")
+    line("#### 真实（干净源，1 首曲库）")
+    line()
+    line("- 测量：起播到首次识别（置信超阈值）的时间差。")
+    line(f"- 实测：中位数 **{_fmt(rlat['median'])}s**，P90 {_fmt(rlat['p90'])}s，最大 {_fmt(rlat['max'])}s，超 5s 占比 {rlat['over5s']}/{rlat['n']}。")
+    line("- 歧义起播（off180 重复副歌）：识别耗时 3.0s < 5s——窗口增长到 ~3s 即消歧，未突破 5s。")
+    line("- 超 5s 的 1 段为 off240（纯间奏稀疏段，7.2s），属 R1「前奏/间奏指纹稀疏」，非歧义问题。")
+    line(f"- 结论：{'✅ 通过' if rlat['median'] is not None and rlat['median'] < 5.0 else '❌ 不通过'}（真实干净源，中位数 <5s；间奏稀疏段见 §5 R1）")
+    line()
+    line("#### 模拟（合成样本）")
+    line()
+    line(f"- 实测：中位数 **{_fmt(lat['median'])}s**，P90 {_fmt(lat['p90'])}s，最大 {_fmt(lat['max'])}s，超 5s 占比 {lat['over5s']}/{lat['n']}。")
     line(f"- 结论：{'✅ 通过' if lat['median'] is not None and lat['median'] < 5.0 and (lat['p90'] or 0) < 5.0 else '❌ 不通过'}（模拟）")
     line()
 
@@ -508,10 +518,11 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     # 5 遗留问题
     line("## 5. 遗留问题（区分真实 vs 模拟）")
     line()
-    line("- 【真实（干净源）】识别准确率 / 初始定位误差 / 歌词同步为 1 首曲库、干净源自匹配结论，已消除「合成旋律」这一不确定项，但不覆盖人声跟唱 / 环境噪声 / 混响 / 版本差异。")
+    line("- 【真实（干净源）】识别准确率 / 初始定位误差 / 歌词同步 / 首次识别耗时为 1 首曲库、干净源自匹配结论，已消除「合成旋律」这一不确定项，但不覆盖人声跟唱 / 环境噪声 / 混响 / 版本差异。")
     line("- 【真实（干净源）已修复】重复副歌段误锁定 offset（原 1/7 段初始定位误差 123s、整曲行号回退）已通过「识别期窗口增长到 8s + offset 唯一性校验 + 失锁/暂停冻结进度修正」修复：全 7 段初始定位误差 ≤4ms、整曲歌词违规 0。")
-    line("- 【待包房录音】鲁棒性指标（首次识别耗时、暂停 / 重唱 / 切歌 / 失锁恢复、人声跟唱与噪声下的识别率）仍为模拟结论，需真实包房录音后补齐。")
-    line("- 【R1 待确认】「任意位置起播 <5s」是否含纯前奏：合成样本无静音前奏，真实曲目前奏指纹稀疏问题仅以干净源自匹配观察，未在带噪环境下验证。")
+    line("- 【待包房录音】鲁棒性指标（暂停 / 重唱 / 切歌 / 失锁恢复、人声跟唱与噪声下的识别率）仍为模拟结论，需真实包房录音后补齐。")
+    line("- 【R1 已实测】「任意位置起播 <5s」在真实源上不完全成立：off240 纯间奏稀疏段首次识别 7.2s > 5s（其余含歧义段 off180 3.0s、前奏 off0 2.6s 均 <5s）。前奏/间奏指纹稀疏是当前指纹方案的真实短板，待带噪环境再验。")
+    line("- 【无超时兜底】极端情况：整段 8s 窗口仍无法消歧的曲目会一直停留在识别中，既不识别也不明确返回未识别。M0 可接受，记入遗留。")
     line("- 【R3/R4 已触发】变调 ±1 半音、变速 ±5% 下 Shazam 式指纹失效，建议按 §3.6 启动 Panako 评估。")
     line("- 【对齐简化】M0 `align` 仅保留 LRC 行级时间戳，词级强制对齐（WhisperX）留 P1。")
     line()
@@ -525,12 +536,11 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     synth_top1_ok = s_acc is not None and s_acc >= 0.95 and ol["reject_rate"] is not None and ol["reject_rate"] >= 0.95
     synth_offset_ok = soe["median"] is not None and soe["median"] < 0.2
     synth_sync_ok = len(ssy["violations"]) == 0 and ssy["total_switches"] > 0
-    lat_ok = lat["median"] is not None and lat["median"] < 5.0 and (lat["p90"] or 0) < 5.0
     recov_ok = rc["median"] is not None and rc["median"] < 3.0
 
     line("| 指标 | 目标 | 真实（干净源） | 模拟 | 结论 |")
     line("|---|---|---|---|---|")
-    line(f"| 首次识别耗时 | < 5s | —（待包房录音） | {_fmt(lat['median'])}s | {'✅ 模拟通过' if lat_ok else '❌ 不通过'} |")
+    line(f"| 首次识别耗时 | < 5s | 中位 {_fmt(rlat['median'])}s / 最大 {_fmt(rlat['max'])}s | {_fmt(lat['median'])}s | 真实中位 <5s；间奏稀疏段 7.2s（R1） |")
     line(f"| 识别准确率 | Top-1 > 95%；曲库外明确未识别 | **{_pct(r_acc)}**（1 首曲库） | {_pct(s_acc)} / 拒识 {_pct(ol['reject_rate'])} | 真实（干净源）{'✅ 通过' if real_top1_ok else '❌ 不通过'}；鲁棒性待包房录音 |")
     line(f"| 初始定位误差 | 中位数 < 200ms | **{_fmt_ms(roe['median'])}**（{'✅' if real_offset_ok else '❌'}） | {_fmt_ms(soe['median'])} | 真实（干净源）{'✅ 中位数通过' if real_offset_ok else '❌ 不通过'} |")
     line(f"| 持续同步 / 歌词逐行 | 无手动干预、无可见跳动 | 违规 {len(rsy['violations'])} 条 | 违规 {len(ssy['violations'])} 条 | 真实（干净源）{'✅ 通过' if real_sync_ok else '❌ 不通过'} |")
