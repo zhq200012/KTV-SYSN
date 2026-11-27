@@ -1,4 +1,4 @@
-"""命令行入口：import / align / dataset-build / eval / synth / demo。"""
+"""命令行入口：import / align / dataset-build / eval / synth / real / demo。"""
 from __future__ import annotations
 
 import argparse
@@ -221,6 +221,72 @@ def cmd_synth(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_real(args: argparse.Namespace) -> int:
+    """从已导入曲目截取「干净源」自匹配样本（kind=real），供评测真实曲目识别/定位/同步。
+
+    音频/歌词不入库；样本 wav 写 `data/eval/real/`，真值写 `data/eval/labels/`，
+    索引并入 `data/eval/manifest.json`（仅元数据入库）。
+    """
+    root = _data_root(args)
+    song_id = args.song_id
+    ref_path = os.path.join(root, "songs", song_id, "reference.wav")
+    if not os.path.exists(ref_path):
+        print(f"错误：曲库内不存在 {song_id}（{ref_path}），先 `import`。", file=sys.stderr)
+        return 1
+
+    sr = DEFAULT_CONFIG.sample_rate
+    samples = load_audio(ref_path, sr)
+    duration = len(samples) / sr
+    seg_dur = args.duration
+    os.makedirs(os.path.join(root, "eval", "real"), exist_ok=True)
+    os.makedirs(os.path.join(root, "eval", "labels"), exist_ok=True)
+
+    def _clip(off: float, dur: float) -> float:
+        return max(0.0, min(off, duration - dur)) if duration > dur else 0.0
+
+    new_samples: list[dict] = []
+    for off in args.offsets:
+        off = _clip(off, seg_dur)
+        i0, i1 = int(off * sr), int((off + seg_dur) * sr)
+        sid = f"real_{song_id}_off{int(off)}"
+        write_wav(os.path.join(root, "eval", "real", f"{sid}.wav"), samples[i0:i1], sr)
+        label = {"sample_id": sid, "kind": "real", "audio_path": f"eval/real/{sid}.wav",
+                 "song_id": song_id, "start_offset_sec": round(off, 3),
+                 "duration_sec": round((i1 - i0) / sr, 3), "events": [],
+                 "freq_scale": 1.0, "time_scale": 1.0, "notes": "干净源自匹配"}
+        with open(os.path.join(root, "eval", "labels", f"{sid}.json"), "w", encoding="utf-8") as f:
+            json.dump(label, f, ensure_ascii=False, indent=2)
+        new_samples.append(label)
+
+    # 整曲同步样本（行切换判定需 duration >= 20s）
+    full_off = _clip(args.full_offset, args.full_duration)
+    i0, i1 = int(full_off * sr), int((full_off + args.full_duration) * sr)
+    sid = f"real_{song_id}_full"
+    write_wav(os.path.join(root, "eval", "real", f"{sid}.wav"), samples[i0:i1], sr)
+    label = {"sample_id": sid, "kind": "real", "audio_path": f"eval/real/{sid}.wav",
+             "song_id": song_id, "start_offset_sec": round(full_off, 3),
+             "duration_sec": round((i1 - i0) / sr, 3), "events": [],
+             "freq_scale": 1.0, "time_scale": 1.0, "notes": "整曲同步（干净源自匹配）"}
+    with open(os.path.join(root, "eval", "labels", f"{sid}.json"), "w", encoding="utf-8") as f:
+        json.dump(label, f, ensure_ascii=False, indent=2)
+    new_samples.append(label)
+
+    # 并入 eval/manifest.json（保留其它样本，替换同曲的旧 real 样本）
+    manifest_path = os.path.join(root, "eval", "manifest.json")
+    existing: list[dict] = []
+    if os.path.exists(manifest_path):
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            existing = json.load(f).get("samples", [])
+    existing = [s for s in existing if not (s.get("kind") == "real" and s.get("song_id") == song_id)]
+    existing.extend(new_samples)
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump({"samples": existing}, f, ensure_ascii=False, indent=2)
+
+    print(f"已生成真实样本 {len(new_samples)} 段（{song_id}，干净源自匹配）。"
+          f"下一步：python -m singalong dataset-build && python -m singalong eval")
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     root = _data_root(args)
     cfg = DEFAULT_CONFIG
@@ -316,6 +382,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("synth", help="生成合成曲库与样本")
     sp.add_argument("--seed", type=int, default=20261126)
     sp.set_defaults(func=cmd_synth)
+
+    sp = sub.add_parser("real", help="从已导入曲目生成干净源自匹配样本")
+    sp.add_argument("--song-id", required=True)
+    sp.add_argument("--offsets", type=float, nargs="+",
+                    default=[0.0, 15.0, 60.0, 120.0, 180.0, 240.0],
+                    help="分段样本起播秒数（默认覆盖前奏/主歌/副歌）")
+    sp.add_argument("--duration", type=float, default=12.0, help="分段样本时长（秒）")
+    sp.add_argument("--full-offset", type=float, default=0.0, help="整曲同步样本起播秒数")
+    sp.add_argument("--full-duration", type=float, default=90.0, help="整曲同步样本时长（秒）")
+    sp.set_defaults(func=cmd_real)
 
     sp = sub.add_parser("demo", help="跑通识别->同步->终端歌词全链路")
     sp.add_argument("sample", help="样本标注 JSON 路径")

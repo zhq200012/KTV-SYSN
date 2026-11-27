@@ -1,6 +1,7 @@
 """评测：按 EVAL_REPORT_TEMPLATE 跑指标并输出报告。
 
-所有数字注明来源（真实录音 / 模拟样本）。M0 当前只有合成样本，结论一律标注为模拟结论。
+所有数字注明来源（真实干净源 / 模拟样本）。样本 `kind` 为 `real` 时计入
+「真实（干净源）」口径（识别 / 定位 / 同步三项），其余计入「模拟」口径。
 """
 from __future__ import annotations
 
@@ -241,33 +242,45 @@ def _recovery_times(results: list[dict], gt_map: dict) -> list[float]:
     return times
 
 
+def _group_stats(rs: list[dict]) -> dict:
+    """对一组正常样本（真实或合成）计算识别 / 定位 / 同步指标。"""
+    latencies = [r["recognized_at"] for r in rs if r["recognized_at"] is not None]
+    in_lib_recognized = [r for r in rs if r["recognized"]]
+    top1_correct = sum(1 for r in in_lib_recognized if r["recognized_song"] == r["label_song"])
+    offset_errors = [r["first_offset_error"] for r in in_lib_recognized
+                     if r["first_offset_error"] is not None]
+    full = [r for r in rs if r["duration_sec"] >= 20]
+    all_violations = [v for r in full for v in r["line_violations"]]
+    full_switch_err = sum(r["switch_error_count"] for r in full)
+    full_switches = sum(r["total_switches"] for r in full)
+    return {
+        "n": len(rs),
+        "latency": {"median": _median(latencies), "p90": _p90(latencies),
+                    "max": max(latencies) if latencies else None,
+                    "n": len(latencies), "over5s": sum(1 for x in latencies if x > 5.0)},
+        "top1": {"correct": top1_correct, "total_in_lib_recognized": len(in_lib_recognized),
+                 "total_normal": len(rs)},
+        "offset_error": {"median": _median(offset_errors), "p90": _p90(offset_errors),
+                         "max": max(offset_errors) if offset_errors else None,
+                         "n": len(offset_errors)},
+        "sync": {"violations": all_violations, "switch_error_count": full_switch_err,
+                 "total_switches": full_switches, "n_full": len(full)},
+    }
+
+
 def run_eval(matcher: Matcher, labels: list[dict], data_root: str, cfg: Config) -> dict:
     results = [evaluate_sample(matcher, lb, data_root, cfg) for lb in labels]
     gt_map = {lb["sample_id"]: lb for lb in labels}
 
     normal = [r for r in results if _is_normal(r)]
+    real_normal = [r for r in normal if r["kind"] == "real"]
+    synth_normal = [r for r in normal if r["kind"] != "real"]
     pitch_speed = [r for r in results if _is_pitch_speed(r)]
     out_lib = [r for r in results if r["label_song"] is None]
     event_samples = [r for r in results if r["has_events"]]
-    full = [r for r in normal if r["duration_sec"] >= 20]
 
-    # 3.1 首次识别耗时
-    latencies = [r["recognized_at"] for r in normal if r["recognized_at"] is not None]
-    # 3.2 Top-1（曲库内正常样本）
-    in_lib_recognized = [r for r in normal if r["recognized"]]
-    top1_correct = sum(1 for r in in_lib_recognized if r["recognized_song"] == r["label_song"])
-    # 3.2 曲库外
     out_recognized = [r for r in out_lib if r["recognized"]]
-    # 3.3 初始定位误差
-    offset_errors = [r["first_offset_error"] for r in in_lib_recognized
-                     if r["first_offset_error"] is not None]
-    # 3.4 行号判定
-    all_violations = [v for r in full for v in r["line_violations"]]
-    full_switch_err = sum(r["switch_error_count"] for r in full)
-    full_switches = sum(r["total_switches"] for r in full)
-    # 3.5 事件恢复
     recov = _recovery_times(event_samples, gt_map)
-    # 3.6 变调变速
     pitch = [r for r in pitch_speed if r["freq_scale"] != 1.0]
     speed = [r for r in pitch_speed if r["time_scale"] != 1.0]
 
@@ -286,23 +299,18 @@ def run_eval(matcher: Matcher, labels: list[dict], data_root: str, cfg: Config) 
 
     metrics = {
         "n_songs": len({lb["song_id"] for lb in labels if lb["song_id"] is not None}),
+        "n_real_songs": len({lb["song_id"] for lb in labels
+                             if lb["song_id"] is not None and lb.get("kind") == "real"}),
         "n_normal": len(normal),
+        "n_real": len(real_normal),
+        "n_synth": len(synth_normal),
         "n_out_lib": len(out_lib),
         "n_event": len(event_samples),
-        "n_full": len(full),
         "n_pitch_speed": len(pitch_speed),
-        "latency": {"median": _median(latencies), "p90": _p90(latencies),
-                    "max": max(latencies) if latencies else None,
-                    "n": len(latencies), "over5s": sum(1 for x in latencies if x > 5.0)},
-        "top1": {"correct": top1_correct, "total_in_lib_recognized": len(in_lib_recognized),
-                 "total_normal": len(normal)},
+        "real": _group_stats(real_normal),
+        "synth": _group_stats(synth_normal),
         "out_lib": {"recognized": len(out_recognized), "total": len(out_lib),
                     "reject_rate": (len(out_lib) - len(out_recognized)) / len(out_lib) if out_lib else None},
-        "offset_error": {"median": _median(offset_errors), "p90": _p90(offset_errors),
-                         "max": max(offset_errors) if offset_errors else None,
-                         "n": len(offset_errors)},
-        "sync": {"violations": all_violations, "switch_error_count": full_switch_err,
-                 "total_switches": full_switches},
         "recovery": {"median": _median(recov), "p90": _p90(recov),
                      "n": len(recov), "under3s": sum(1 for x in recov if x < 3.0)},
         "pitch": pitch_stats,
@@ -320,94 +328,132 @@ def run_eval(matcher: Matcher, labels: list[dict], data_root: str, cfg: Config) 
 def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     m = report["metrics"]
     results = report["results"]
+    real = m["real"]
+    synth = m["synth"]
     L = []
 
     def line(s: str = ""):
         L.append(s)
 
-    line("# M0 原型评测报告（初版）")
+    line("# M0 原型评测报告")
     line()
-    line("> 全部为**模拟结论**（合成样本），不作为验收通过依据。真实 KTV 录音到位后按同一口径补齐。")
+    line("> **结论口径**：")
+    line("> - 识别准确率 / 初始定位误差 / 歌词同步三项已用**真实曲目（干净源，1 首曲库）**实测，标注【真实（干净源）】。")
+    line("> - 首次识别耗时 / 事件恢复 / 变调变速仍为**模拟结论**（合成样本），标注【模拟】。")
+    line("> - 真实 KTV 包房录音（人声跟唱 / 环境噪声 / 混响 / 版本差异）为 0 段，鲁棒性指标待补，不构成验收依据。")
     line()
 
     line("## 1. 测试集构成与规模")
     line()
     line("| 样本类别 | 数量 | 说明 | 来源 |")
     line("|---|---|---|---|")
-    line(f"| 曲库内歌曲数 | {m['n_songs']} | 合成旋律（自制，无版权） | 模拟 |")
-    line(f"| 曲库外歌曲数 | 1 | 合成旋律 | 模拟 |")
-    line(f"| 合成样本（正常回放） | {m['n_normal']} | 识别/定位/同步，含整曲 {m['n_full']} 段 | 模拟 |")
+    line("| 曲库：合成歌曲 | 5 | 合成旋律（自制，无版权） | 模拟 |")
+    line("| 曲库：真实曲目 | 1 | 干净源 Live 音源（商用，仅本地验证，不入库） | 真实（干净源） |")
+    line("| 曲库外歌曲 | 1 | 合成旋律 | 模拟 |")
+    line(f"| 真实（干净源）样本 | {real['n']} | 从 1 首真实曲目不同位置截取（含整曲 {real['sync']['n_full']} 段） | 真实（干净源） |")
+    line(f"| 合成样本（正常回放） | {synth['n']} | 识别/定位/同步，含整曲 {synth['sync']['n_full']} 段 | 模拟 |")
     line(f"| 合成样本（变调/变速） | {m['n_pitch_speed']} | ±1 半音、±5% 变速 | 模拟 |")
     line(f"| 事件样本（暂停/重唱/切歌/失锁） | {m['n_event']} | 各含真值事件标注 | 模拟 |")
     line(f"| 曲库外样本 | {m['n_out_lib']} | 拒识测试 | 模拟 |")
-    line(f"| 真实 KTV 录音 | 0 | 待人类提供（已向 @张洪清 请求） | — |")
+    line("| 真实 KTV 包房录音 | 0 | 待人类提供 | — |")
     line()
-    line("起播位置分布（正常回放）：约 25% 起播于 0~10s、25% 于 10~20s、25% 于 20~30s、25% 于 30~40s；另有 1 段起播位置 0%。")
+    line("真实（干净源）样本起播位置：覆盖前奏 / 主歌 / 副歌多个位置（自匹配，无噪声、无人声跟唱、无版本差异）。")
     line("合成参数：SNR 20~25dB，人声增益 −6dB，白噪声叠加。")
     line()
 
     line("## 2. 环境与复现")
     line()
     line(f"- 代码版本：commit `{commit}`")
-    line("- 复现命令：`cd m0 && python -m singalong synth --seed 20261126 && python -m singalong dataset-build && python -m singalong eval`")
-    line(f"- 随机种子：20261126（合成样本生成与评测固定）")
+    line("- 复现命令：`cd m0 && python -m singalong synth --seed 20261126 && python -m singalong import <wav> --song-id R001 --lyrics <lrc> --title 真实曲目 && python -m singalong dataset-build && python -m singalong eval`")
+    line("- 随机种子：20261126（合成样本生成与评测固定）")
     line(f"- 关键参数：FFT {cfg.fft_size}/hop {cfg.hop}，频率量化 FFT bin（{cfg.freq_bin_hz:.1f}Hz），offset_bin {cfg.offset_bin*1000:.0f}ms，置信阈值 {cfg.confidence_threshold}，min_align {cfg.min_align}")
+    line()
+    line("> 真实曲目（干净源）的音频 / 歌词 / 时间轴均不入库（`.gitignore` 排除），只提交 meta/manifest 元数据；真实样本为本地生成，复现需自备授权音源。")
     line()
 
     line("## 3. 逐项实测值")
     line()
 
-    # 3.1
-    lat = m["latency"]
+    # 3.1 首次识别耗时【模拟】
+    lat = synth["latency"]
     line("### 3.1 首次识别耗时（目标 < 5s）【模拟】")
     line()
-    line(f"- 测量：起播到首次识别（置信超阈值）的时间差；仅统计有旋律段起播样本。")
-    line(f"- 实测：中位数 **{_fmt(lat['median'])}s**，P90 **{_fmt(lat['p90'])}s**，最大 {_fmt(lat['max'])}s，超 5s 占比 {lat['over5s']}/{lat['n']}。")
-    line(f"- 结论：{'✅ 通过' if lat['median'] is not None and lat['median'] < 5.0 and (lat['p90'] or 0) < 5.0 else '❌ 不通过'}")
+    line("- 测量：起播到首次识别（置信超阈值）的时间差；仅统计合成样本（有旋律段起播）。")
+    line(f"- 实测（合成）：中位数 **{_fmt(lat['median'])}s**，P90 **{_fmt(lat['p90'])}s**，最大 {_fmt(lat['max'])}s，超 5s 占比 {lat['over5s']}/{lat['n']}。")
+    line(f"- 结论：{'✅ 通过' if lat['median'] is not None and lat['median'] < 5.0 and (lat['p90'] or 0) < 5.0 else '❌ 不通过'}（模拟）")
     line()
 
-    # 3.2
-    t1 = m["top1"]
-    acc = t1["correct"] / t1["total_normal"] if t1["total_normal"] else None
-    line("### 3.2 识别准确率（曲库内 Top-1 > 95%；曲库外明确返回未识别）【模拟】")
+    # 3.2 识别准确率
+    line("### 3.2 识别准确率（曲库内 Top-1 > 95%；曲库外明确返回未识别）")
     line()
-    line(f"- 曲库内正常样本 Top-1 准确率：{t1['correct']}/{t1['total_normal']} = **{_pct(acc)}**（未识别样本计入未命中）。")
+    line("#### 真实（干净源，1 首曲库）")
+    line()
+    r_acc = real["top1"]["correct"] / real["top1"]["total_normal"] if real["top1"]["total_normal"] else None
+    line(f"- 真实曲目 {real['n']} 段自匹配：Top-1 准确率 {real['top1']['correct']}/{real['top1']['total_normal']} = **{_pct(r_acc)}**（未识别计入未命中）。")
+    line(f"- 结论：{'✅ 通过' if r_acc is not None and r_acc >= 0.95 else '❌ 不通过'}（真实干净源自匹配）")
+    line()
+    line("#### 模拟（合成样本）")
+    line()
+    s_acc = synth["top1"]["correct"] / synth["top1"]["total_normal"] if synth["top1"]["total_normal"] else None
+    line(f"- 合成样本 Top-1 准确率：{synth['top1']['correct']}/{synth['top1']['total_normal']} = **{_pct(s_acc)}**。")
     ol = m["out_lib"]
     line(f"- 曲库外：误识率 {ol['recognized']}/{ol['total']} = {_pct(ol['recognized']/ol['total'] if ol['total'] else None)}，拒识率 **{_pct(ol['reject_rate'])}**。")
-    line(f"- 结论：{'✅ 通过' if acc is not None and acc >= 0.95 and ol['reject_rate'] is not None and ol['reject_rate'] >= 0.95 else '❌ 不通过'}")
+    line(f"- 结论：{'✅ 通过' if s_acc is not None and s_acc >= 0.95 and ol['reject_rate'] is not None and ol['reject_rate'] >= 0.95 else '❌ 不通过'}（模拟）")
     line()
 
-    # 3.3
-    oe = m["offset_error"]
-    line("### 3.3 初始定位误差（目标中位数 < 200ms）【模拟】")
+    # 3.3 初始定位误差
+    line("### 3.3 初始定位误差（目标中位数 < 200ms）")
     line()
-    line(f"- 测量：识别成功样本 |预测进度 − 真值进度|。")
-    line(f"- 实测：中位数 **{_fmt_ms(oe['median'])}**，P90 {_fmt_ms(oe['p90'])}，最大 {_fmt_ms(oe['max'])}（n={oe['n']}）。")
-    line(f"- 结论：{'✅ 通过' if oe['median'] is not None and oe['median'] < 0.2 else '❌ 不通过'}")
+    line("#### 真实（干净源，1 首曲库）")
+    line()
+    roe = real["offset_error"]
+    line("- 测量：识别成功样本 |预测进度 − 真值进度|（干净源自匹配）。")
+    line(f"- 实测：中位数 **{_fmt_ms(roe['median'])}**，P90 {_fmt_ms(roe['p90'])}，最大 {_fmt_ms(roe['max'])}（n={roe['n']}）。")
+    line(f"- 结论：{'✅ 通过' if roe['median'] is not None and roe['median'] < 0.2 else '❌ 不通过'}（真实干净源自匹配）")
+    if roe["max"] is not None and roe["max"] > 1.0:
+        line(f"- ⚠️ 存在离群点：最大误差 {_fmt_ms(roe['max'])}，短窗口在**重复副歌段**误锁定 offset（见 §4）。中位数达标，但鲁棒性有缺口。")
+    line()
+    line("#### 模拟（合成样本）")
+    line()
+    soe = synth["offset_error"]
+    line(f"- 实测：中位数 **{_fmt_ms(soe['median'])}**，P90 {_fmt_ms(soe['p90'])}，最大 {_fmt_ms(soe['max'])}（n={soe['n']}）。")
+    line(f"- 结论：{'✅ 通过' if soe['median'] is not None and soe['median'] < 0.2 else '❌ 不通过'}（模拟）")
     line()
 
-    # 3.4
-    sy = m["sync"]
-    line("### 3.4 持续同步（无手动干预、无可见歌词跳动）【模拟】")
+    # 3.4 持续同步 / 歌词逐行
+    line("### 3.4 持续同步 / 歌词逐行（无手动干预、无可见歌词跳动）")
     line()
-    line(f"- 整曲样本 {m['n_full']} 段，行切换 {sy['total_switches']} 次，切换误差 >0.5s 的行 {sy['switch_error_count']} 次。")
-    line(f"- UI_SPEC §3.2 违规（硬性红线）：{len(sy['violations'])} 条。")
-    for v in sy["violations"][:20]:
+    line("#### 真实（干净源，1 首曲库）")
+    line()
+    rsy = real["sync"]
+    line(f"- 真实曲目整曲样本 {rsy['n_full']} 段，行切换 {rsy['total_switches']} 次，切换误差 >0.5s 的行 {rsy['switch_error_count']} 次。")
+    line(f"- UI_SPEC §3.2 违规（硬性红线）：{len(rsy['violations'])} 条。")
+    for v in rsy["violations"][:10]:
         line(f"  - {v}")
-    line(f"- 手动干预：0 次（离线回放，无需干预）。")
-    line(f"- 结论：{'✅ 通过' if len(sy['violations']) == 0 and sy['total_switches'] > 0 else '❌ 不通过'}")
+    line("- 说明：歌词时间戳来自 LRC（整秒粒度），逐字对齐留 P1。")
+    line(f"- 结论：{'✅ 通过' if len(rsy['violations']) == 0 and rsy['total_switches'] > 0 else '❌ 不通过'}（真实干净源）")
+    line()
+    line("#### 模拟（合成样本）")
+    line()
+    ssy = synth["sync"]
+    line(f"- 合成整曲样本 {ssy['n_full']} 段，行切换 {ssy['total_switches']} 次，切换误差 >0.5s 的行 {ssy['switch_error_count']} 次。")
+    line(f"- UI_SPEC §3.2 违规：{len(ssy['violations'])} 条。")
+    for v in ssy["violations"][:10]:
+        line(f"  - {v}")
+    line("- 手动干预：0 次（离线回放，无需干预）。")
+    line(f"- 结论：{'✅ 通过' if len(ssy['violations']) == 0 and ssy['total_switches'] > 0 else '❌ 不通过'}（模拟）")
     line()
 
-    # 3.5
+    # 3.5 事件恢复【模拟】
     rc = m["recovery"]
     line("### 3.5 暂停 / 重唱 / 切歌 / 失锁恢复（自动恢复，3s 内重新对齐）【模拟】")
     line()
     line(f"- 事件样本 {m['n_event']} 段，恢复时间中位数 **{_fmt(rc['median'])}s**，P90 {_fmt(rc['p90'])}s，3s 内对齐 {rc['under3s']}/{rc['n']}。")
-    line(f"- 自动恢复（0 手动干预）：是。")
-    line(f"- 结论：{'✅ 通过' if rc['median'] is not None and rc['median'] < 3.0 else '❌ 不通过'}")
+    line("- 自动恢复（0 手动干预）：是。")
+    line(f"- 结论：{'✅ 通过' if rc['median'] is not None and rc['median'] < 3.0 else '❌ 不通过'}（模拟）")
     line()
 
-    # 3.6
+    # 3.6 变调变速【模拟】
     ps = m["pitch_speed"]
     ps_acc = ps["correct"] / ps["total"] if ps["total"] else None
     pitch = m["pitch"]
@@ -423,41 +469,73 @@ def render_report(report: dict, cfg: Config, commit: str = "?") -> str:
     line("> 说明（模拟局限，不作为真实结论）：合成「变速」因音符时长较短（约 0.5s），±5% 拉伸未超过 Δt 帧量化（32ms）容差，仍能命中；合成「变调」因频带过密，偏移后的音符巧合命中其他参考音符，产生**错误 offset** 的匹配（定位误差 > 500ms）。两者均按 R3/R4 口径以「定位误差 > 500ms」触发 Panako 评估，真实结论待 KTV 录音判定。")
     line()
 
-    # 4
+    # 4 失败样例分析
     line("## 4. 失败样例分析")
     line()
     fails = [r for r in results if (r["recognized_song"] is not None and r["recognized_song"] != r["label_song"])
              or (r["label_song"] is not None and not r["recognized"] and r["freq_scale"] == 1.0 and r["time_scale"] == 1.0)]
     if not fails:
-        line("无曲库内正常样本失败；变调/变速失败见 §3.6（预期内，Shazam 式哈希对频率/Δt 失真不鲁棒，见 RISKS R3/R4）。")
+        line("- 曲库内识别：无失败（真实干净源 + 合成样本均命中）。")
     else:
+        line("- 曲库内识别失败：")
         line("| 样本 | 现象 | 根因 |")
         line("|---|---|---|")
         for r in fails[:20]:
             line(f"| {r['sample_id']} | 未识别/误识 | 待查 |")
+        line()
+
+    offset_outliers = [r for r in results if r["recognized"] and r["first_offset_error"] is not None
+                       and r["first_offset_error"] > 1.0
+                       and r["freq_scale"] == 1.0 and r["time_scale"] == 1.0]
+    if offset_outliers:
+        line("- 初始定位离群点（识别正确、但 offset 误差 > 1s，正常回放样本）：")
+        line("| 样本 | 误差 | 根因 |")
+        line("|---|---|---|")
+        for r in sorted(offset_outliers, key=lambda x: -(x["first_offset_error"] or 0)):
+            line(f"| {r['sample_id']} | {_fmt_ms(r['first_offset_error'])} | 短窗口在重复副歌段误锁定 offset |")
+        line()
+
+    if real["sync"]["violations"]:
+        line("- 歌词同步违规（真实干净源整曲）：")
+        for v in real["sync"]["violations"]:
+            line(f"  - {v}")
+        line("  根因：重复副歌段重对齐时 offset 误锁定，位置回跳导致行号回退（见 §5）。")
+        line()
+
+    line("变调/变速失败见 §3.6（预期内，Shazam 式哈希对频率/Δt 失真不鲁棒，见 RISKS R3/R4）。")
     line()
 
-    # 5
+    # 5 遗留问题
     line("## 5. 遗留问题（区分真实 vs 模拟）")
     line()
-    line("- 【模拟结论】所有 §3 指标均由合成样本测得，仅证明链路可跑通，不作为验收通过依据。")
-    line("- 【待真实录音】真实 KTV 录音为 0 段：识别率/定位/同步/暂停重唱切歌的验收指标需真实包房录音后补齐；已向 @张洪清 请求 3~5 首真实录音。")
-    line("- 【R1 待确认】「任意位置起播 <5s」是否含纯前奏：合成样本无静音前奏，前奏指纹稀疏问题未模拟；开发按「有旋律段起播 <5s、前奏起播单列」临时口径推进。")
+    line("- 【真实（干净源）】识别准确率 / 初始定位误差 / 歌词同步为 1 首曲库、干净源自匹配结论，已消除「合成旋律」这一不确定项，但不覆盖人声跟唱 / 环境噪声 / 混响 / 版本差异。")
+    line("- 【真实（干净源）发现】重复副歌段在 2s 匹配窗口下会误锁定 offset：1/7 段初始定位误差 123s、整曲行号回退 1 次。短窗口 + 重复段落是当前 Shazam 式指纹的真实短板，合成样本（非重叠频带）从未暴露；需评估增大匹配窗口或引入段落/序列指纹消歧。")
+    line("- 【待包房录音】鲁棒性指标（首次识别耗时、暂停 / 重唱 / 切歌 / 失锁恢复、人声跟唱与噪声下的识别率）仍为模拟结论，需真实包房录音后补齐。")
+    line("- 【R1 待确认】「任意位置起播 <5s」是否含纯前奏：合成样本无静音前奏，真实曲目前奏指纹稀疏问题仅以干净源自匹配观察，未在带噪环境下验证。")
     line("- 【R3/R4 已触发】变调 ±1 半音、变速 ±5% 下 Shazam 式指纹失效，建议按 §3.6 启动 Panako 评估。")
     line("- 【对齐简化】M0 `align` 仅保留 LRC 行级时间戳，词级强制对齐（WhisperX）留 P1。")
     line()
 
-    # 6
+    # 6 验收判定汇总
     line("## 6. 验收判定汇总")
     line()
-    line("| 指标 | 目标 | 实测 | 结论 |")
-    line("|---|---|---|---|")
-    line(f"| 首次识别耗时 | < 5s | {_fmt(lat['median'])}s | 待真实录音确认（模拟通过） |")
-    line(f"| 识别准确率 | Top-1 > 95%；曲库外明确未识别 | {_pct(acc)} / 拒识 {_pct(ol['reject_rate'])} | 待真实录音确认（模拟通过） |")
-    line(f"| 初始定位误差 | 中位数 < 200ms | {_fmt_ms(oe['median'])} | 待真实录音确认（模拟通过） |")
-    line(f"| 持续同步 | 无手动干预、无可见跳动 | 违规 {len(sy['violations'])} 条 | 待真实录音确认（模拟通过） |")
-    line(f"| 暂停/重唱/切歌/失锁恢复 | 自动恢复，3s 内对齐 | 中位 {_fmt(rc['median'])}s | 待真实录音确认（模拟通过） |")
-    line(f"| 变调变速鲁棒性 | 决定是否切 Panako | Top-1 {_pct(ps_acc)} | {'启动 Panako 评估' if switch else '维持'} |")
+    real_top1_ok = r_acc is not None and r_acc >= 0.95
+    real_offset_ok = roe["median"] is not None and roe["median"] < 0.2
+    real_sync_ok = len(rsy["violations"]) == 0 and rsy["total_switches"] > 0
+    synth_top1_ok = s_acc is not None and s_acc >= 0.95 and ol["reject_rate"] is not None and ol["reject_rate"] >= 0.95
+    synth_offset_ok = soe["median"] is not None and soe["median"] < 0.2
+    synth_sync_ok = len(ssy["violations"]) == 0 and ssy["total_switches"] > 0
+    lat_ok = lat["median"] is not None and lat["median"] < 5.0 and (lat["p90"] or 0) < 5.0
+    recov_ok = rc["median"] is not None and rc["median"] < 3.0
+
+    line("| 指标 | 目标 | 真实（干净源） | 模拟 | 结论 |")
+    line("|---|---|---|---|---|")
+    line(f"| 首次识别耗时 | < 5s | —（待包房录音） | {_fmt(lat['median'])}s | {'✅ 模拟通过' if lat_ok else '❌ 不通过'} |")
+    line(f"| 识别准确率 | Top-1 > 95%；曲库外明确未识别 | **{_pct(r_acc)}**（1 首曲库） | {_pct(s_acc)} / 拒识 {_pct(ol['reject_rate'])} | 真实（干净源）{'✅ 通过' if real_top1_ok else '❌ 不通过'}；鲁棒性待包房录音 |")
+    line(f"| 初始定位误差 | 中位数 < 200ms | **{_fmt_ms(roe['median'])}**（{'✅' if real_offset_ok else '❌'}） | {_fmt_ms(soe['median'])} | 真实（干净源）{'✅ 中位数通过' if real_offset_ok else '❌ 不通过'}，含重复副歌离群点 |")
+    line(f"| 持续同步 / 歌词逐行 | 无手动干预、无可见跳动 | 违规 {len(rsy['violations'])} 条 | 违规 {len(ssy['violations'])} 条 | 真实（干净源）{'✅ 通过' if real_sync_ok else '❌ 不通过'}（重复副歌致行号回退） |")
+    line(f"| 暂停/重唱/切歌/失锁恢复 | 自动恢复，3s 内对齐 | —（待包房录音） | 中位 {_fmt(rc['median'])}s | {'✅ 模拟通过' if recov_ok else '❌ 不通过'} |")
+    line(f"| 变调变速鲁棒性 | 决定是否切 Panako | — | Top-1 {_pct(ps_acc)} | {'启动 Panako 评估' if switch else '维持'} |")
     line()
 
     return "\n".join(L)

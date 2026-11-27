@@ -11,7 +11,10 @@ from singalong.config import DEFAULT_CONFIG
 from singalong.matcher import Matcher
 from singalong.sync_engine import EventType, FileClock, SyncEngine, SyncState
 from singalong.timeline import current_line, load_timeline
+from singalong.lyrics import parse_lrc
+from singalong import eval_runner
 import os, tempfile, json
+from unittest import mock
 
 
 def _index_of(songs):
@@ -145,6 +148,67 @@ class TestTimeline(unittest.TestCase):
             self.assertEqual(ln.text, "跟唱测试歌词 · 第1行")
         finally:
             os.unlink(path)
+
+
+class TestLyrics(unittest.TestCase):
+    def test_parse_lrc_skips_metadata(self):
+        content = "\n".join([
+            "[0:00] 夜空中最亮的星 (Live) - 逃跑计划",
+            "[0:05] 词：某人",
+            "[0:10] 曲：某人",
+            "[0:15] 第一句歌词",
+            "[0:20] 第二句歌词",
+        ])
+        lines = parse_lrc(content)
+        texts = [t for _, t in lines]
+        self.assertEqual(texts, ["第一句歌词", "第二句歌词"])
+        self.assertEqual(lines[0][0], 15.0)
+
+
+class TestEvalSplit(unittest.TestCase):
+    """run_eval 按样本 kind 把真实（干净源）与模拟样本分开统计。"""
+
+    def _fake_eval(self, matcher, label, data_root, cfg):
+        return {
+            "sample_id": label["sample_id"], "kind": label.get("kind"),
+            "label_song": label.get("song_id"), "freq_scale": 1.0, "time_scale": 1.0,
+            "has_events": bool(label.get("events")),
+            "duration_sec": label.get("duration_sec", 8.0),
+            "recognized": True, "recognized_song": label.get("song_id"),
+            "recognized_at": 2.0, "first_offset_error": 0.01,
+            "trace": [], "events": [], "line_violations": [],
+            "switch_error_count": 0, "total_switches": 0,
+        }
+
+    def _labels(self):
+        return [
+            {"sample_id": "real_1", "kind": "real", "song_id": "R001",
+             "start_offset_sec": 0.0, "duration_sec": 8.0, "events": [],
+             "freq_scale": 1.0, "time_scale": 1.0},
+            {"sample_id": "real_2", "kind": "real", "song_id": "R001",
+             "start_offset_sec": 10.0, "duration_sec": 8.0, "events": [],
+             "freq_scale": 1.0, "time_scale": 1.0},
+            {"sample_id": "synth_1", "kind": "synth", "song_id": "S001",
+             "start_offset_sec": 2.0, "duration_sec": 8.0, "events": [],
+             "freq_scale": 1.0, "time_scale": 1.0},
+        ]
+
+    def test_run_eval_splits_real_vs_synth(self):
+        with mock.patch.object(eval_runner, "evaluate_sample", side_effect=self._fake_eval):
+            report = eval_runner.run_eval(None, self._labels(), "data", DEFAULT_CONFIG)
+        m = report["metrics"]
+        self.assertEqual(m["n_real"], 2)
+        self.assertEqual(m["n_synth"], 1)
+        self.assertEqual(m["n_real_songs"], 1)
+        self.assertEqual(m["real"]["top1"]["correct"], 2)
+        self.assertEqual(m["synth"]["top1"]["correct"], 1)
+
+    def test_render_report_marks_real_and_sim(self):
+        with mock.patch.object(eval_runner, "evaluate_sample", side_effect=self._fake_eval):
+            report = eval_runner.run_eval(None, self._labels(), "data", DEFAULT_CONFIG)
+        md = eval_runner.render_report(report, DEFAULT_CONFIG, commit="test")
+        self.assertIn("真实（干净源）", md)
+        self.assertIn("【模拟】", md)
 
 
 if __name__ == "__main__":

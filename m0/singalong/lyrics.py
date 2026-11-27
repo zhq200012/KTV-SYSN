@@ -16,10 +16,29 @@ def _parse_ts(text: str) -> float | None:
     return mm * 60 + ss + frac
 
 
+_METADATA_PREFIXES = (
+    "词", "曲", "作词", "作曲", "编曲", "演唱", "歌手", "专辑",
+    "制作人", "制作", "监制", "发行", "混音", "录音", "和声",
+    "吉他", "贝斯", "鼓", "键盘", "弦乐", "歌词",
+)
+
+
+def _is_lrc_metadata(text: str, seen_lyric: bool) -> bool:
+    """判断 LRC 行是否为元数据（标题 / 词曲作者等），而非歌词。"""
+    for p in _METADATA_PREFIXES:
+        if text.startswith(p) and (len(text) == len(p) or text[len(p)] in "：: "):
+            return True
+    # 首行 "标题 - 演唱者"（出现在任何歌词之前）
+    if not seen_lyric and " - " in text:
+        return True
+    return False
+
+
 def parse_lrc(content: str) -> list[tuple[float, str]]:
-    """LRC -> [(start_sec, text), ...]，按时间升序。"""
+    """LRC -> [(start_sec, text), ...]，按时间升序。跳过标题/词曲等元数据行。"""
     lines: list[tuple[float, str]] = []
     tag_re = re.compile(r"\[(\d{1,2}:\d{1,2}(?:[.,]\d{1,3})?)\]")
+    seen_lyric = False
     for raw in content.splitlines():
         raw = raw.strip()
         if not raw:
@@ -30,6 +49,9 @@ def parse_lrc(content: str) -> list[tuple[float, str]]:
         text = raw[tags[-1].end():].strip()
         if not text:
             continue
+        if _is_lrc_metadata(text, seen_lyric):
+            continue
+        seen_lyric = True
         for tag in tags:
             t = _parse_ts(tag.group(1))
             if t is not None:
